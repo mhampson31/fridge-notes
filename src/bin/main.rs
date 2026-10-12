@@ -19,6 +19,7 @@ use embedded_graphics::{
     text::Text,
 };
 use embedded_hal_bus::spi::RefCellDevice;
+use epdsi::prelude::*;
 use esp_hal::clock::CpuClock;
 use esp_hal::delay::Delay;
 use esp_hal::gpio::{Input, InputConfig, Level, Output, OutputConfig};
@@ -27,7 +28,6 @@ use esp_hal::spi::master::Config as SpiConfig;
 use esp_hal::spi::master::Spi;
 use esp_hal::time::Rate;
 use esp_hal::timer::timg::TimerGroup;
-use ssd1677::{Builder, Color, Dimensions, Display, GraphicDisplay, Interface, Rotation};
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
@@ -40,8 +40,8 @@ extern crate alloc;
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
 
-const WIDTH: u16 = 528;
-const HEIGHT: u16 = 792;
+const WIDTH: u32 = 528;
+const HEIGHT: u32 = 792;
 const BUFFER_SIZE: u16 = 52272;
 
 #[allow(
@@ -79,49 +79,25 @@ async fn main(spawner: Spawner) -> ! {
         .with_mosi(peripherals.GPIO10),
     );
 
-    let d = Delay::new();
+    let mut delay = Delay::new();
 
     let cs = Output::new(peripherals.GPIO21, Level::High, OutputConfig::default());
     let spi = RefCellDevice::new(&spi_bus, cs, d).expect("Could not create SPI");
 
-    let dc = Output::new(peripherals.GPIO4, Level::Low, OutputConfig::default());
-    let rst = Output::new(peripherals.GPIO5, Level::Low, OutputConfig::default());
-    let busy = Input::new(peripherals.GPIO6, InputConfig::default());
-
-    let interface = Interface::new(spi, dc, rst, busy);
+    let dc_pin = Output::new(peripherals.GPIO4, Level::Low, OutputConfig::default());
+    let rst_pin = Output::new(peripherals.GPIO5, Level::Low, OutputConfig::default());
+    let busy_pin = Input::new(peripherals.GPIO6, InputConfig::default());
 
     defmt::info!("initializing display");
-    let dims = Dimensions::new(WIDTH, HEIGHT).expect("Could not set display dimensions");
+    let epd_bus = SpiBusWrapper::new(spi, dc_pin, rst_pin, busy_pin);
+    let controller = Ssd1677Controller::new(WIDTH, HEIGHT);
 
-    let display_config = Builder::new()
-        .dimensions(dims)
-        .rotation(Rotation::Rotate0)
-        .build()
-        .expect("Could not build display");
+    let mut epd = EpdBuilder::<_, _>::new(controller).build(epd_bus);
 
-    let display = Display::new(interface, display_config);
-    let mut delay = Delay::new();
-
-    defmt::info!("2");
-    let mut graphic_display = GraphicDisplay::new(
-        display,
-        vec![0u8; BUFFER_SIZE.into()], // Black buffer
-        vec![0u8; BUFFER_SIZE.into()], // Red buffer
-    );
-    defmt::info!("3");
-    Text::new(
-        "Hello, E-Paper!",
-        Point::new(10, 20),
-        MonoTextStyle::new(&FONT_6X10, Color::Black),
-    )
-    .draw(&mut graphic_display)
-    .expect("Could not draw graphics");
-
-    defmt::info!("4");
-    // Update display
-    graphic_display
-        .update(&mut delay)
-        .unwrap_or(defmt::error!("Could not update display"));
+    epd.init(&mut delay).unwrap();
+    epd.clear_frame(ColorChannel::BlackWhite, 0xFF).unwrap();
+    epd.refresh(&mut delay).unwrap();
+    epd.sleep(&mut delay).unwrap();
 
     defmt::info!("initializing wifi");
     let _wifi_controller =
