@@ -8,6 +8,8 @@
 #![deny(clippy::large_stack_frames)]
 
 use core::cell::RefCell;
+use defmt;
+use defmt_rtt as _;
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 
@@ -42,6 +44,8 @@ async fn main(spawner: Spawner) -> ! {
     // generator version: 1.4.0
     // generator parameters: -o esp32c3 -o unstable-hal -o embassy -o ci -o zed -o alloc -o wifi -o stable-x86_64-unknown-linux-gnu
 
+    defmt::info!("starting up");
+
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
@@ -50,6 +54,7 @@ async fn main(spawner: Spawner) -> ! {
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     esp_rtos::start(timg0.timer0, peripherals.FROM_CPU_INTR0);
 
+    defmt::info!("initializing SPI");
     // Initialize SPI
     let spi_bus = RefCell::new(
         Spi::new(
@@ -76,6 +81,7 @@ async fn main(spawner: Spawner) -> ! {
 
     let interface = Interface::new(spi, dc, rst, busy);
 
+    defmt::info!("initializing display");
     let dims = Dimensions::new(600, 792).expect("Could not set display dimensions");
 
     let display_config = Builder::new()
@@ -89,6 +95,7 @@ async fn main(spawner: Spawner) -> ! {
 
     let _ = display.reset(&mut delay);
 
+    defmt::info!("initializing wifi");
     let _wifi_controller =
         esp_radio::wifi::WifiController::new(peripherals.WIFI, Default::default())
             .expect("Failed to initialize Wi-Fi controller");
@@ -97,6 +104,7 @@ async fn main(spawner: Spawner) -> ! {
     // TODO: Spawn some tasks
     let _ = spawner;
 
+    defmt::info!("running main loop");
     loop {
         Timer::after(Duration::from_secs(1)).await;
     }

@@ -4,11 +4,17 @@ include = ["esp-config.toml"]
 [target.riscv32imc-unknown-none-elf]
 runner = "probe-rs run --chip esp32c3"
 
+[env]
+DEFMT_LOG = "info"
+
 [build]
 rustflags = [
   # Required to obtain backtraces (e.g. when using the "esp-backtrace" crate.)
   # NOTE: May negatively impact performance of produced code
   "-C", "force-frame-pointers",
+
+  # defmt
+  "-C", "link-arg=-Tdefmt.x",
 ]
 
 target = "riscv32imc-unknown-none-elf"
