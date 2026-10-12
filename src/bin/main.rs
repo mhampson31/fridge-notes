@@ -7,12 +7,17 @@
 )]
 #![deny(clippy::large_stack_frames)]
 
+use alloc::vec;
 use core::cell::RefCell;
 use defmt;
 use defmt_rtt as _;
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
-
+use embedded_graphics::{
+    mono_font::{MonoTextStyle, ascii::FONT_6X10},
+    prelude::*,
+    text::Text,
+};
 use embedded_hal_bus::spi::RefCellDevice;
 use esp_hal::clock::CpuClock;
 use esp_hal::delay::Delay;
@@ -22,7 +27,7 @@ use esp_hal::spi::master::Config as SpiConfig;
 use esp_hal::spi::master::Spi;
 use esp_hal::time::Rate;
 use esp_hal::timer::timg::TimerGroup;
-use ssd1677::{Builder, Dimensions, Display, Interface, Rotation};
+use ssd1677::{Builder, Color, Dimensions, Display, GraphicDisplay, Interface, Rotation};
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
@@ -34,6 +39,10 @@ extern crate alloc;
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
+
+const WIDTH: u16 = 528;
+const HEIGHT: u16 = 792;
+const BUFFER_SIZE: u16 = 52272;
 
 #[allow(
     clippy::large_stack_frames,
@@ -82,7 +91,7 @@ async fn main(spawner: Spawner) -> ! {
     let interface = Interface::new(spi, dc, rst, busy);
 
     defmt::info!("initializing display");
-    let dims = Dimensions::new(600, 792).expect("Could not set display dimensions");
+    let dims = Dimensions::new(WIDTH, HEIGHT).expect("Could not set display dimensions");
 
     let display_config = Builder::new()
         .dimensions(dims)
@@ -90,10 +99,29 @@ async fn main(spawner: Spawner) -> ! {
         .build()
         .expect("Could not build display");
 
-    let mut display = Display::new(interface, display_config);
+    let display = Display::new(interface, display_config);
     let mut delay = Delay::new();
 
-    let _ = display.reset(&mut delay);
+    defmt::info!("2");
+    let mut graphic_display = GraphicDisplay::new(
+        display,
+        vec![0u8; BUFFER_SIZE.into()], // Black buffer
+        vec![0u8; BUFFER_SIZE.into()], // Red buffer
+    );
+    defmt::info!("3");
+    Text::new(
+        "Hello, E-Paper!",
+        Point::new(10, 20),
+        MonoTextStyle::new(&FONT_6X10, Color::Black),
+    )
+    .draw(&mut graphic_display)
+    .expect("Could not draw graphics");
+
+    defmt::info!("4");
+    // Update display
+    graphic_display
+        .update(&mut delay)
+        .unwrap_or(defmt::error!("Could not update display"));
 
     defmt::info!("initializing wifi");
     let _wifi_controller =
