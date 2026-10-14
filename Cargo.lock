@@ -1146,6 +1146,7 @@ dependencies = [
  "embedded-graphics",
  "embedded-graphics-core",
  "embedded-hal 1.0.0",
+ "embedded-hal-async",
  "embedded-hal-bus",
  "embedded-io 0.7.1",
  "embedded-io-async 0.7.0",
@@ -1155,8 +1156,8 @@ dependencies = [
  "esp-hal",
  "esp-radio",
  "esp-rtos",
+ "maybe-async-cfg",
  "smoltcp 0.14.0",
- "ssd1677",
  "static_cell",
 ]
 
@@ -1865,17 +1866,6 @@ checksum = "f39bb07107650fb128f05f033a97212e946a3c0625cc729c97ed586bf7f226a3"
 dependencies = [
  "somni-expr",
  "somni-parser",
-]
-
-[[package]]
-name = "ssd1677"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2560a0e0d835b69b9666494f3337d723801db172255970d983996bb274d2be13"
-dependencies = [
- "embedded-graphics-core",
- "embedded-hal 1.0.0",
- "log",
 ]
 
 [[package]]

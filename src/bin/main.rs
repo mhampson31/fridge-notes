@@ -7,7 +7,6 @@
 )]
 #![deny(clippy::large_stack_frames)]
 
-use alloc::vec;
 use core::cell::RefCell;
 use defmt;
 use defmt_rtt as _;
@@ -28,6 +27,8 @@ use esp_hal::spi::master::Config as SpiConfig;
 use esp_hal::spi::master::Spi;
 use esp_hal::time::Rate;
 use esp_hal::timer::timg::TimerGroup;
+
+mod driver;
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
@@ -82,7 +83,7 @@ async fn main(spawner: Spawner) -> ! {
     let mut delay = Delay::new();
 
     let cs = Output::new(peripherals.GPIO21, Level::High, OutputConfig::default());
-    let spi = RefCellDevice::new(&spi_bus, cs, d).expect("Could not create SPI");
+    let spi = RefCellDevice::new(&spi_bus, cs, delay).expect("Could not create SPI");
 
     let dc_pin = Output::new(peripherals.GPIO4, Level::Low, OutputConfig::default());
     let rst_pin = Output::new(peripherals.GPIO5, Level::Low, OutputConfig::default());
@@ -92,7 +93,7 @@ async fn main(spawner: Spawner) -> ! {
     let epd_bus = SpiBusWrapper::new(spi, dc_pin, rst_pin, busy_pin);
     let controller = Ssd1677Controller::new(WIDTH, HEIGHT);
 
-    let mut epd = EpdBuilder::<_, _>::new(controller).build(epd_bus);
+    let mut epd = EpdBuilder::<_, driver::XTEinkX3>::new(controller).build(epd_bus);
 
     epd.init(&mut delay).unwrap();
     epd.clear_frame(ColorChannel::BlackWhite, 0xFF).unwrap();
