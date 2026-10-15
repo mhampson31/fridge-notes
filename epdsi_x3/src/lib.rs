@@ -1,3 +1,5 @@
+#![no_std]
+
 #[cfg(feature = "blocking")]
 use embedded_hal::delay::DelayNs;
 #[cfg(feature = "blocking")]
@@ -15,6 +17,7 @@ use embedded_hal_async::digital::Wait;
 
 use epdsi::{
     bus::{EpdBusError, SpiBusWrapper},
+    controllers::uc8253::cmd,
     traits::{ColorChannel, ColorMode, EpdController, EpdPanel},
 };
 
@@ -23,23 +26,37 @@ use epdsi::{
 pub struct XTEinkX3 {}
 
 impl EpdPanel for XTEinkX3 {
-    const WIDTH: u32 = 600;
+    const WIDTH: u32 = 528;
     const HEIGHT: u32 = 792;
     const COLOR_MODE: ColorMode = ColorMode::BlackWhite;
 }
 
 /* Controller */
 
-pub struct UC8279d {
+pub struct UC8279dController {
     width: u32,
     height: u32,
+}
+
+impl UC8279dController {
+    pub fn new(width: u32, height: u32) -> Self {
+        Self { width, height }
+    }
+
+    pub fn for_panel<P: EpdPanel>() -> Self {
+        Self::new(P::WIDTH, P::HEIGHT)
+        /*.with_vcom(P::VCOM)
+        .with_gate_voltage(P::GATE_VOLTAGE)
+        .with_lut(P::CUSTOM_LUT)
+        */
+    }
 }
 
 #[maybe_async_cfg::maybe(
     sync(feature = "blocking", keep_self),
     async(not(feature = "blocking"), keep_self)
 )]
-impl<SPI, DC, RST, BUSY> EpdController<SpiBusWrapper<SPI, DC, RST, BUSY>> for UC8279d
+impl<SPI, DC, RST, BUSY> EpdController<SpiBusWrapper<SPI, DC, RST, BUSY>> for UC8279dController
 where
     SPI: SpiDevice,
     DC: OutputPin,
@@ -112,8 +129,10 @@ where
     async fn sleep<DELAY: DelayNs>(
         &mut self,
         bus: &mut SpiBusWrapper<SPI, DC, RST, BUSY>,
-        _delay: &mut DELAY,
+        delay: &mut DELAY,
     ) -> Result<(), Self::Error> {
-        bus.send_command_with_data(0x10, &[0x01]).await
+        bus.send_command(cmd::POWER_OFF).await?;
+        bus.wait_busy_with_delay(delay, false).await?;
+        bus.send_command_with_data(cmd::DEEP_SLEEP, &[0xA5]).await
     }
 }

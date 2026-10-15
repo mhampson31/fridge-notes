@@ -28,7 +28,7 @@ use esp_hal::spi::master::Spi;
 use esp_hal::time::Rate;
 use esp_hal::timer::timg::TimerGroup;
 
-mod driver;
+use epdsi_x3::{UC8279dController, XTEinkX3};
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
@@ -40,10 +40,6 @@ extern crate alloc;
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
-
-const WIDTH: u32 = 528;
-const HEIGHT: u32 = 792;
-const BUFFER_SIZE: u16 = 52272;
 
 #[allow(
     clippy::large_stack_frames,
@@ -91,9 +87,9 @@ async fn main(spawner: Spawner) -> ! {
 
     defmt::info!("initializing display");
     let epd_bus = SpiBusWrapper::new(spi, dc_pin, rst_pin, busy_pin);
-    let controller = Ssd1677Controller::new(WIDTH, HEIGHT);
+    let controller = UC8279dController::for_panel::<XTEinkX3>();
 
-    let mut epd = EpdBuilder::<_, driver::XTEinkX3>::new(controller).build(epd_bus);
+    let mut epd = EpdBuilder::<_, epdsi_x3::XTEinkX3>::new(controller).build(epd_bus);
 
     epd.init(&mut delay).unwrap();
     epd.clear_frame(ColorChannel::BlackWhite, 0xFF).unwrap();

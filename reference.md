@@ -1,1 +1,2 @@
-X3 GRPIO reference: https://gist.github.com/CrazyCoder/1c5f846adee18e21f91e264601a6ddce
+https://github.com/bigbag/papyrix-reader/blob/main/docs/x3-uc8279-driver-reference.md
+https://github.com/MarsTechHAN/freeink-sdk-mono/blob/main/docs/xteink-x3-uc8279-support.md
