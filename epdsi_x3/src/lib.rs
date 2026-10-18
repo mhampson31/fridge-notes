@@ -32,7 +32,7 @@ impl EpdPanel for XTEinkX3 {
 }
 
 /* Controller */
-
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct UC8279dController {
     width: u32,
     height: u32,

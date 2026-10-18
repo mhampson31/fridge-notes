@@ -28,7 +28,7 @@ use esp_hal::spi::master::Spi;
 use esp_hal::time::Rate;
 use esp_hal::timer::timg::TimerGroup;
 
-use epdsi_x3::{UC8279dController, XTEinkX3};
+use epdsi_x3::XTEinkX3;
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
@@ -87,9 +87,9 @@ async fn main(spawner: Spawner) -> ! {
 
     defmt::info!("initializing display");
     let epd_bus = SpiBusWrapper::new(spi, dc_pin, rst_pin, busy_pin);
-    let controller = UC8279dController::for_panel::<XTEinkX3>();
+    let controller = Uc8253Controller::new(XTEinkX3::WIDTH, XTEinkX3::HEIGHT);
 
-    let mut epd = EpdBuilder::<_, epdsi_x3::XTEinkX3>::new(controller).build(epd_bus);
+    let mut epd = EpdBuilder::<_, XTEinkX3>::new(controller).build(epd_bus);
 
     epd.init(&mut delay).unwrap();
     epd.clear_frame(ColorChannel::BlackWhite, 0xFF).unwrap();
